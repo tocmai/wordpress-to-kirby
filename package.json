@@ -1,0 +1,22 @@
+{
+  "name": "wordpress-to-kirby",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/tocmai/wordpress-to-kirby#readme",
+  "bugs": {
+    "url": "https://github.com/tocmai/wordpress-to-kirby/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tocmai/wordpress-to-kirby.git"
+  },
+  "scripts": {
+    "test": "node --test 'test/**/*.test.js'"
+  },
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "js-yaml": "^5.5.0",
+    "opsh": "^1.1.0"
+  }
+}
