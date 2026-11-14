@@ -36,8 +36,8 @@ export function serialize(data = {}) {
 	return Object.entries(data)
 		.filter(entry => entry[0] && entry[1])
 		.map(entry => {
-			const value = (Array.isArray(entry[1]) ? dump(entry[1]) : entry[1])
-				.replace(/(?:\n|^)----/, '\\----')
+			const value = (Array.isArray(entry[1]) ? dump(entry[1]) : entry[1] + '')
+				.replace(/(?:\n|^)----/g, '\\----')
 				.trim();
 			const key = cap(slugify(entry[0]));
 			return key + (value.indexOf('\n') > -1 ? ':\n\n' : ': ') + value;
