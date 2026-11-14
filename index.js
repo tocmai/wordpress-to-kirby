@@ -37,8 +37,12 @@ if (operands.length !== 1) {
 	process.exit(1);
 }
 
-const parsers = {};
-const serializers = {};
+const parsers = {
+	'postmeta_wp_attachment_metadata': 'php'
+};
+const serializers = {
+	'postmeta_wp_attachment_metadata': 'json'
+};
 
 function commasep(val) {
 	return (val || '').split(/\s*,\s*/).filter(Boolean);
@@ -91,21 +95,21 @@ function parse_value(key, value) {
 			try {
 				return unserialize(value);
 			} catch(err) {
-				console.error(`Can’t serialize PHP value, skipping: ${value}`);
+				console.error(`Warn: Can’t serialize PHP value, skipping: ${value}`);
 				return value;
 			}
 		case 'yaml':
 			try {
 				return load(value);
 			} catch (err) {
-				console.error(`Can’t serialize YAML value, skipping: ${value}`);
+				console.error(`Warn: Can’t serialize YAML value, skipping: ${value}`);
 				return value;
 			}
 		case 'json':
 			try {
 				return JSON.parse(value);
 			} catch(err) {
-				console.error(`Can’t serialize JSON value, skipping: ${value}`);
+				console.error(`Warn: Can’t serialize JSON value, skipping: ${value}`);
 				return value;
 			}
 		default:
@@ -122,21 +126,21 @@ function serialize_value(key, value) {
 			try {
 				return serialize(value);
 			} catch(err) {
-				console.error(`Can’t stringify PHP value, skipping: ${value}`);
+				console.error(`Warn: Can’t stringify PHP value, skipping: ${value}`);
 				return value;
 			}
 		case 'yaml':
 			try {
 				return dump(value);
 			} catch (err) {
-				console.error(`Can’t stringify YAML value, skipping: ${value}`);
+				console.error(`Warn: Can’t stringify YAML value, skipping: ${value}`);
 				return value;
 			}
 		case 'json':
 			try {
 				return JSON.stringify(value);
 			} catch(err) {
-				console.error(`Can’t stringify JSON value, skipping: ${value}`);
+				console.error(`Warn: Can’t stringify JSON value, skipping: ${value}`);
 				return value;
 			}
 		default:
@@ -189,9 +193,7 @@ function extract(item) {
 		...select('postmeta', 'wp', true).reduce((acc, it) => {
 			const key = select('meta_key', 'wp', false, it).textContent;
 			const value = select('meta_value', 'wp', false, it).textContent;
-			if (!key.match(/^_/)) {
-				acc['postmeta_' + key] = parse_value('postmeta_' + key, value);
-			}
+			acc['postmeta' + key] = parse_value('postmeta' + key, value);
 			return acc;
 		}, {}),
 		uuid: uuid()
@@ -291,7 +293,7 @@ Keys extracted from the XML:
 	Post metadata:
 
 		Fields from <wp:postmeta> not starting with an underscore
-		are included in the output with the 'postmeta_*' prefix.
+		are included in the output with the 'postmeta*' prefix.
 
 Keys generated from scratch:
 
