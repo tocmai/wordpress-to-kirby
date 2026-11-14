@@ -5,9 +5,9 @@ import { join, dirname, relative } from 'node:path';
 import opsh from 'opsh';
 import { JSDOM } from 'jsdom';
 import { load } from 'js-yaml';
-import { unserialize } from 'php-serialize';
+import { serialize, unserialize } from 'php-serialize';
 
-import { serialize } from './src/kirby-txt.js';
+import { serialize as serialize_item } from './src/kirby-txt.js';
 import { uuid } from './src/uuid.js';
 
 async function getPackage() {
@@ -67,23 +67,22 @@ commasep(options.serialize).forEach(pair => {
 const keys_to_include = new Set(commasep(options.include));
 const keys_to_exclude = new Set(options.include ? [] : commasep(options.exclude));
 
-function pluck(item) {
+function process_item(item) {
+	let entries = Object.entries(item);
 	if (keys_to_include.size) {
-		return Object.fromEntries(
-			Object.entries(item)
-				.filter(entry => keys_to_include.has(entry[0]))
-		);
+		entries = entries.filter(entry => keys_to_include.has(entry[0]));
+	} else if (keys_to_exclude.size) {
+		entries = entries.filter(entry => !keys_to_exclude.has(entry[0]));
 	}
-	if (keys_to_exclude.size) {
-		return Object.fromEntries(
-			Object.entries(item)
-				.filter(entry => !keys_to_exclude.has(entry[0]))
-		);
-	}
-	return item;
+	return Object.fromEntries(
+		entries.map(entry => [
+			entry[0],
+			serialize_value(entry[0], entry[1])
+		])
+	);
 }
 
-function parse(key, value) {
+function parse_value(key, value) {
 	if (!value) {
 		return value;
 	}
@@ -92,21 +91,52 @@ function parse(key, value) {
 			try {
 				return unserialize(value);
 			} catch(err) {
-				console.error(`Can’t unserialize PHP value, skipping: ${value}`);
+				console.error(`Can’t serialize PHP value, skipping: ${value}`);
 				return value;
 			}
 		case 'yaml':
 			try {
 				return load(value);
 			} catch (err) {
-				console.error(`Can’t parse YAML value, skipping: ${value}`);
+				console.error(`Can’t serialize YAML value, skipping: ${value}`);
 				return value;
 			}
 		case 'json':
 			try {
 				return JSON.parse(value);
 			} catch(err) {
-				console.error(`Can’t parse JSON value, skipping: ${value}`);
+				console.error(`Can’t serialize JSON value, skipping: ${value}`);
+				return value;
+			}
+		default:
+			return value;
+	}
+}
+
+function serialize_value(key, value) {
+	if (!value) {
+		return value;
+	}
+	switch(serializers[key]) {
+		case 'php':
+			try {
+				return serialize(value);
+			} catch(err) {
+				console.error(`Can’t stringify PHP value, skipping: ${value}`);
+				return value;
+			}
+		case 'yaml':
+			try {
+				return dump(value);
+			} catch (err) {
+				console.error(`Can’t stringify YAML value, skipping: ${value}`);
+				return value;
+			}
+		case 'json':
+			try {
+				return JSON.stringify(value);
+			} catch(err) {
+				console.error(`Can’t stringify JSON value, skipping: ${value}`);
 				return value;
 			}
 		default:
@@ -160,7 +190,7 @@ function extract(item) {
 			const key = select('meta_key', 'wp', false, it).textContent;
 			const value = select('meta_value', 'wp', false, it).textContent;
 			if (!key.match(/^_/)) {
-				acc['postmeta_' + key] = parse('postmeta_' + key, value);
+				acc['postmeta_' + key] = parse_value('postmeta_' + key, value);
 			}
 			return acc;
 		}, {}),
@@ -184,7 +214,7 @@ function outpath(item) {
 for await (let item of items) {
 	const destination = outpath(item);
 	await mkdir(dirname(destination), { recursive: true });
-	await writeFile(destination, serialize(pluck(item)));
+	await writeFile(destination, serialize_item(process_item(item)));
 };
 
 const metadata = {
@@ -233,7 +263,13 @@ Options:
 		Prefix post meta fields with "postmeta".
 
 	--serialize=<rules>
-		Not implemented yet.
+		Instructions to serialize some fields, in the form of:
+		"<key>=<serializer>,<key>=<serializer>,…"
+		Supported parsers:
+			php: serialize as PHP object.
+			yaml: serialize as YAML.
+			json: serialize as JSON.
+		Prefix post meta fields with "postmeta".
 
 	--exclude=<keys>
 		Exclude certain keys from the output. Comma-separated.
