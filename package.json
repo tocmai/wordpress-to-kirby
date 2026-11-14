@@ -1,7 +1,7 @@
 {
   "name": "wordpress-to-kirby",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.0.1",
+  "description": "A CLI to convert WordPress XML to Kirby CMS files",
   "homepage": "https://github.com/tocmai/wordpress-to-kirby#readme",
   "bugs": {
     "url": "https://github.com/tocmai/wordpress-to-kirby/issues"
@@ -12,6 +12,9 @@
   },
   "scripts": {
     "test": "node --test 'test/**/*.test.js'"
+  },
+  "bin": {
+    "wordpress-to-kirby": "index.js"
   },
   "type": "module",
   "main": "index.js",
