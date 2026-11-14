@@ -19,3 +19,7 @@ npx wordpress-to-kirby
 ## Options
 
 Use `wordpress-to-kirby --help` for a list of options.
+
+## Prior art
+
+* [`splorp/wordpress-xml-to-kirby`](https://github.com/splorp/wordpress-xml-to-kirby)

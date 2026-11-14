@@ -240,10 +240,11 @@ Keys extracted from the XML:
 
 	Post metadata:
 
-		postmeta_*
+		Fields from <wp:postmeta> not starting with an underscore
+		are included in the output with the 'postmeta_*' prefix.
 
 Keys generated from scratch:
 
-		uuid — sixteen random alphanumeric characters
+		uuid — sixteen random alphanumeric characters.
 `);
 }
