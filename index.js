@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
+import { join, dirname, relative } from 'node:path';
 
 import opsh from 'opsh';
 import { JSDOM } from 'jsdom';
@@ -186,6 +186,20 @@ for await (let item of items) {
 	await mkdir(dirname(destination), { recursive: true });
 	await writeFile(destination, serialize(pluck(item)));
 };
+
+const metadata = {
+	output: []
+};
+
+items.forEach(item => {
+	metadata.output.push({
+		post_id: +item.post_id,
+		uuid: item.uuid,
+		path: relative(outdir, outpath(item))
+	});
+});
+
+await writeFile(join(outdir, 'metadata.json'), JSON.stringify(metadata, null, '\t'));
 
 function printHelp() {
 	console.log(`wordpress-to-kirby: 
