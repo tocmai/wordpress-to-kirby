@@ -112,6 +112,15 @@ function parse_value(key, value) {
 				console.error(`Warn: Can’t serialize JSON value, skipping: ${value}`);
 				return value;
 			}
+		case 'html':
+			try {
+				return new JSDOM(
+					`<!doctype html><html><head></head><body>${value}</body></html>`
+				).window.document;
+			} catch(err) {
+				console.error(`Warn: Can’t serialize JSON value, skipping: ${value}`);
+				return value;
+			}
 		default:
 			return value;
 	}
@@ -143,6 +152,13 @@ function serialize_value(key, value) {
 				console.error(`Warn: Can’t stringify JSON value, skipping: ${value}`);
 				return value;
 			}
+		case 'html':
+			try {
+				return value.body.innerHTML;
+			} catch(err) {
+				console.error(`Warn: Can’t stringify HTML value, skipping: ${value}`);
+				return value;
+			}
 		default:
 			return value;
 	}
@@ -167,29 +183,29 @@ function extract(item) {
 		return (el ?? item).querySelector(sel);
 	}
 	return {
-		title: select('title').textContent,
-		link: select('link').textContent,
-		pubDate: select('pubDate').textContent,
-		creator: select('creator', 'dc').textContent,
-		guid: select('guid').textContent,
-		guid_isPermaLink: select('guid').getAttribute('isPermaLink'),
-		description: select('description').textContent,
-		content: select('encoded', 'content').textContent,
-		excerpt: select('encoded', 'excerpt').textContent,
-		post_id: select('post_id', 'wp').textContent,
-		post_date: select('post_date', 'wp').textContent,
-		post_date_gmt: select('post_date_gmt', 'wp').textContent,
-		post_modified: select('post_modified', 'wp').textContent,
-		post_modified_gmt: select('post_modified_gmt', 'wp').textContent,
-		comment_status: select('comment_status', 'wp').textContent,
-		ping_status: select('ping_status', 'wp').textContent,
-		post_name: select('post_name', 'wp').textContent,
-		status: select('status', 'wp').textContent,
-		post_parent: select('post_parent', 'wp').textContent,
-		menu_order: select('menu_order', 'wp').textContent,
-		post_type: select('post_type', 'wp').textContent,
-		post_password: select('post_password', 'wp').textContent,
-		is_sticky: select('is_sticky', 'wp').textContent,
+		title: parse_value('title', select('title').textContent),
+		link: parse_value('link', select('link').textContent),
+		pubDate: parse_value('pubDate', select('pubDate').textContent),
+		creator: parse_value('creator', select('creator', 'dc').textContent),
+		guid: parse_value('guid', select('guid').textContent),
+		guid_isPermaLink: parse_value('guid_isPermaLink', select('guid').getAttribute('isPermaLink')),
+		description: parse_value('description', select('description').textContent),
+		content: parse_value('content', select('encoded', 'content').textContent),
+		excerpt: parse_value('excerpt', select('encoded', 'excerpt').textContent),
+		post_id: parse_value('post_id', select('post_id', 'wp').textContent),
+		post_date: parse_value('post_date', select('post_date', 'wp').textContent),
+		post_date_gmt: parse_value('post_date_gmt', select('post_date_gmt', 'wp').textContent),
+		post_modified: parse_value('post_modified', select('post_modified', 'wp').textContent),
+		post_modified_gmt: parse_value('post_modified_gmt', select('post_modified_gmt', 'wp').textContent),
+		comment_status: parse_value('comment_status', select('comment_status', 'wp').textContent),
+		ping_status: parse_value('ping_status', select('ping_status', 'wp').textContent),
+		post_name: parse_value('post_name', select('post_name', 'wp').textContent),
+		status: parse_value('status', select('status', 'wp').textContent),
+		post_parent: parse_value('post_parent', select('post_parent', 'wp').textContent),
+		menu_order: parse_value('menu_order', select('menu_order', 'wp').textContent),
+		post_type: parse_value('post_type', select('post_type', 'wp').textContent),
+		post_password: parse_value('post_password', select('post_password', 'wp').textContent),
+		is_sticky: parse_value('is_sticky', select('is_sticky', 'wp').textContent),
 		...select('postmeta', 'wp', true).reduce((acc, it) => {
 			const key = select('meta_key', 'wp', false, it).textContent;
 			const value = select('meta_value', 'wp', false, it).textContent;
@@ -262,6 +278,7 @@ Options:
 			php: deserialize PHP object.
 			yaml: parse as YAML.
 			json: parse as JSON.
+			html: parse as HTML.
 		Prefix post meta fields with "postmeta".
 
 	--serialize=<rules>
@@ -271,6 +288,7 @@ Options:
 			php: serialize as PHP object.
 			yaml: serialize as YAML.
 			json: serialize as JSON.
+			html: serialize as HTML.
 		Prefix post meta fields with "postmeta".
 
 	--exclude=<keys>
