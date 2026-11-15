@@ -4,7 +4,7 @@ import { join, dirname, extname, relative } from 'node:path';
 
 import opsh from 'opsh';
 import { JSDOM } from 'jsdom';
-import { load } from 'js-yaml';
+import { load, dump } from 'js-yaml';
 import { serialize, unserialize } from 'php-serialize';
 
 import { serialize as serialize_item } from './src/kirby-txt.js';
@@ -223,12 +223,12 @@ function outpath(item) {
 	let parts = (new URL(item.link)).pathname.split('/').filter(Boolean);
 	if (item.post_type === 'attachment') {
 		const filename = parts.pop() + (extname(item.attachment_url ?? '') ?? '') + '.txt';
-		return join(outdir, ...parts.filter(p => p !== 'attachment'), filename);
+		return join(outdir, 'content', ...parts.filter(p => p !== 'attachment'), filename);
 	}
 	if (!parts.length) {
 		parts = ['_unlinked', item.post_type, item.post_id, ...parts];
 	}
-	return join(outdir, ...parts, item.post_type + '.txt');
+	return join(outdir, 'content', ...parts, item.post_type + '.txt');
 }
 
 for await (let item of items) {
@@ -254,9 +254,57 @@ items.forEach(item => {
 		.concat(Object.keys(item));
 });
 
+const blueprints_path = join(outdir, 'site', 'blueprints');
+await mkdir(join(blueprints_path, 'pages'), { recursive: true });
+
 Object.keys(metadata.types).forEach(key => {
 	metadata.types[key] = Array.from(new Set(metadata.types[key])).sort();
+	// Make blueprints
+	const blueprint_content = metadata.types[key].reduce((acc, curr) => {
+		acc[curr] = {
+			type: 'text'
+		};
+		return acc;
+	}, {});
+	writeFile(join(blueprints_path, 'pages', key + '.yml'), dump({
+		sections: {
+			fields: {
+				type: 'fields',
+				fields: blueprint_content
+			},
+			pages: {
+				type: 'pages'
+			},
+			files: {
+				type: 'files'
+			}
+		}
+	}));
 });
+
+
+const default_blueprint = {
+	tabs: {
+		pages: {
+			label: 'Pages',
+			sections: {
+				pages: {
+					type: 'pages'
+				}
+			}
+		},
+		files: {
+			label: 'Files',
+			sections: {
+				files: {
+					type: 'files'
+				}
+			}
+		}
+	}
+};
+await writeFile(join(blueprints_path, 'pages', 'default.yml'), dump(default_blueprint));
+await writeFile(join(blueprints_path, 'site.yml'), dump(default_blueprint));
 
 await writeFile(join(outdir, 'metadata.json'), JSON.stringify(metadata, null, '\t'));
 
