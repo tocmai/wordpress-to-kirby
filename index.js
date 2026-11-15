@@ -201,6 +201,9 @@ function extract(item) {
 		}
 		return (el ?? item).querySelector(sel);
 	}
+
+	const post_type = parse_value('post_type', select('post_type', 'wp').textContent);
+
 	return {
 		title: parse_value('title', select('title').textContent),
 		link: parse_value('link', select('link').textContent),
@@ -222,7 +225,7 @@ function extract(item) {
 		status: parse_value('status', select('status', 'wp').textContent),
 		post_parent: parse_value('post_parent', select('post_parent', 'wp').textContent),
 		menu_order: parse_value('menu_order', select('menu_order', 'wp').textContent),
-		post_type: parse_value('post_type', select('post_type', 'wp').textContent),
+		post_type,
 		post_password: parse_value('post_password', select('post_password', 'wp').textContent),
 		attachment_url: parse_value('attachment_url', select('attachment_url', 'wp')?.textContent),
 		is_sticky: parse_value('is_sticky', select('is_sticky', 'wp').textContent),
@@ -232,7 +235,8 @@ function extract(item) {
 			acc['postmeta' + key] = parse_value('postmeta' + key, value);
 			return acc;
 		}, {}),
-		uuid: uuid()
+		uuid: uuid(),
+		template: post_type === 'attachment' ? 'attachment' : undefined
 	}
 }
 
@@ -276,6 +280,7 @@ if (command === 'generate') {
 
 	const blueprints_path = join(outdir, 'site', 'blueprints');
 	await mkdir(join(blueprints_path, 'pages'), { recursive: true });
+	await mkdir(join(blueprints_path, 'files'), { recursive: true });
 
 	Object.keys(metadata.types).forEach(key => {
 		metadata.types[key] = Array.from(new Set(metadata.types[key])).sort();
@@ -286,35 +291,55 @@ if (command === 'generate') {
 			};
 			return acc;
 		}, {});
-		writeFile(join(blueprints_path, 'pages', key + '.yml'), dump({
-			tabs: {
-				fields: {
-					label: 'Fields',
-					sections: {
-						fields: {
-							type: 'fields',
-							fields: blueprint_content
-						}		
-					}
-				},
-				pages: {
-					label: 'Pages',
-					sections: {
-						pages: {
-							type: 'pages'
+
+		if (key === 'attachment') {
+			const blueprint_dest = join(
+				blueprints_path, 
+				'files', 
+				key + '.yml'
+			);
+
+			writeFile(blueprint_dest, dump({
+				fields: blueprint_content
+			}));
+
+		} else {
+			const blueprint_dest = join(
+				blueprints_path, 
+				'pages', 
+				key + '.yml'
+			);
+
+			writeFile(blueprint_dest, dump({
+				tabs: {
+					fields: {
+						label: 'Fields',
+						sections: {
+							fields: {
+								type: 'fields',
+								fields: blueprint_content
+							}		
 						}
-					}
-				},
-				files: {
-					label: 'Files',
-					sections: {
-						files: {
-							type: 'files'
+					},
+					pages: {
+						label: 'Pages',
+						sections: {
+							pages: {
+								type: 'pages'
+							}
+						}
+					},
+					files: {
+						label: 'Files',
+						sections: {
+							files: {
+								type: 'files'
+							}
 						}
 					}
 				}
-			}
-		}));
+			}));
+		}
 	});
 
 
