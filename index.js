@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname, relative } from 'node:path';
+import { join, dirname, extname, relative } from 'node:path';
 
 import opsh from 'opsh';
 import { JSDOM } from 'jsdom';
@@ -205,6 +205,7 @@ function extract(item) {
 		menu_order: parse_value('menu_order', select('menu_order', 'wp').textContent),
 		post_type: parse_value('post_type', select('post_type', 'wp').textContent),
 		post_password: parse_value('post_password', select('post_password', 'wp').textContent),
+		attachment_url: parse_value('attachment_url', select('attachment_url', 'wp')?.textContent),
 		is_sticky: parse_value('is_sticky', select('is_sticky', 'wp').textContent),
 		...select('postmeta', 'wp', true).reduce((acc, it) => {
 			const key = select('meta_key', 'wp', false, it).textContent;
@@ -221,7 +222,8 @@ const outdir = options.o || options.outdir || 'wordpress-to-kirby';
 function outpath(item) {
 	let parts = (new URL(item.link)).pathname.split('/').filter(Boolean);
 	if (item.post_type === 'attachment') {
-		parts = ['attachments', ...parts];
+		const filename = parts.pop() + (extname(item.attachment_url ?? '') ?? '') + '.txt';
+		return join(outdir, ...parts.filter(p => p !== 'attachment'), filename);
 	}
 	if (!parts.length) {
 		parts = ['_unlinked', item.post_type, item.post_id, ...parts];
@@ -313,7 +315,8 @@ Keys extracted from the XML:
 		description, content, excerpt, post_id, post_date, 
 		post_date_gmt, post_modified, post_modified_gmt, 
 		comment_status, ping_status,  post_name, status, 
-		post_parent, menu_order, post_type, post_password, is_sticky
+		post_parent, menu_order, post_type, post_password, is_sticky,
+		attachment_url
 
 	Post metadata:
 
