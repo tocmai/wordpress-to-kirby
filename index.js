@@ -245,6 +245,8 @@ const metadata = {
 items.forEach(item => {
 	metadata.output.push({
 		post_id: +item.post_id,
+		post_type: item.post_type,
+		url: item.attachment_url ?? item.link,
 		uuid: item.uuid,
 		path: relative(outdir, outpath(item))
 	});
