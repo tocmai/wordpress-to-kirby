@@ -68,8 +68,11 @@ commasep(options.serialize).forEach(pair => {
 	serializers[key] = val;
 });
 
-const keys_to_include = new Set(commasep(options.include));
-const keys_to_exclude = new Set(options.include ? [] : commasep(options.exclude));
+const keys_to_include = new Set(commasep(options['include-keys']));
+const keys_to_exclude = new Set(options['include-keys'] ? [] : commasep(options['exclude-keys']));
+
+const types_to_include = new Set(commasep(options['include-types']));
+const types_to_exclude = new Set(options['include-types'] ? [] : commasep(options['exclude-types']));
 
 function process_item(item) {
 	let entries = Object.entries(item);
@@ -171,7 +174,16 @@ const document = new JSDOM(
 	}
 ).window.document;
 
-const items = Array.from(document.querySelectorAll('item')).map(extract);
+const items = Array.from(document.querySelectorAll('item'))
+	.map(extract)
+	.filter(item => {
+		if (types_to_include.size) {
+			return types_to_include.has(item.post_type);
+		} else if (types_to_exclude.size) {
+			return !types_to_exclude.has(item.post_type);
+		}
+		return true;
+	});
 
 function extract(item) {
 	const select = (sel, ns, all = false, el) => {
@@ -267,16 +279,31 @@ Object.keys(metadata.types).forEach(key => {
 		return acc;
 	}, {});
 	writeFile(join(blueprints_path, 'pages', key + '.yml'), dump({
-		sections: {
+		tabs: {
 			fields: {
-				type: 'fields',
-				fields: blueprint_content
+				label: 'Fields',
+				sections: {
+					fields: {
+						type: 'fields',
+						fields: blueprint_content
+					}		
+				}
 			},
 			pages: {
-				type: 'pages'
+				label: 'Pages',
+				sections: {
+					pages: {
+						type: 'pages'
+					}
+				}
 			},
 			files: {
-				type: 'files'
+				label: 'Files',
+				sections: {
+					files: {
+						type: 'files'
+					}
+				}
 			}
 		}
 	}));
@@ -350,12 +377,19 @@ Options:
 			html: serialize as HTML.
 		Prefix post meta fields with "postmeta".
 
-	--exclude=<keys>
+	--exclude-keys=<keys>
 		Exclude certain keys from the output. Comma-separated.
 
-	--include=<keys>
+	--include-keys=<keys>
 		Only include certain keys from the output. Comma-separated.
-		When '--include' is specified, any '--exclude' is ignored.
+		When '--include-keys' is specified, any '--exclude-keys' is ignored.
+
+	--exclude-types=<types>
+		Exclude certain post types from the output. Comma-separated.
+
+	--include-types=<types>
+		Only include certain post types from the output. Comma-separated.
+		When '--include-types' is specified, any '--exclude-types' is ignored.
 
 Keys extracted from the XML:
 
