@@ -32,8 +32,15 @@ if (options.v || options.version) {
 	process.exit();
 }
 
-if (operands.length !== 1) {
-	console.error(`Exactly one operand is supported, ${operands.length} provided. Exiting.`);
+const [command, ...files ] = operands;
+
+if (command !== 'generate' && command !== 'download') {
+	console.error(`Supported commands: generate, download; ${command} provided. Exiting.`);
+	process.exit(1);
+}
+
+if (files.length !== 1) {
+	console.error(`Exactly one file is supported, ${files.length} provided. Exiting.`);
 	process.exit(1);
 }
 
@@ -168,7 +175,7 @@ function serialize_value(key, value) {
 }
 
 const document = new JSDOM(
-	await readFile(operands[0], 'utf8'),
+	await readFile(files[0], 'utf8'),
 	{
 		contentType: 'application/xml'
 	}
@@ -243,52 +250,76 @@ function outpath(item) {
 	return join(outdir, 'content', ...parts, item.post_type + '.txt');
 }
 
-for await (let item of items) {
-	const destination = outpath(item);
-	await mkdir(dirname(destination), { recursive: true });
-	await writeFile(destination, serialize_item(process_item(item)));
-};
+if (command === 'generate') {
+	for await (let item of items) {
+		const destination = outpath(item);
+		await mkdir(dirname(destination), { recursive: true });
+		await writeFile(destination, serialize_item(process_item(item)));
+	};
 
-const metadata = {
-	output: [],
-	types: {}
-};
+	const metadata = {
+		output: [],
+		types: {}
+	};
 
-items.forEach(item => {
-	metadata.output.push({
-		post_id: +item.post_id,
-		post_type: item.post_type,
-		url: item.attachment_url ?? item.link,
-		uuid: item.uuid,
-		path: relative(outdir, outpath(item))
+	items.forEach(item => {
+		metadata.output.push({
+			post_id: +item.post_id,
+			post_type: item.post_type,
+			url: item.attachment_url ?? item.link,
+			uuid: item.uuid,
+			path: relative(outdir, outpath(item))
+		});
+		metadata.types[item.post_type] = (metadata.types[item.post_type] || [])
+			.concat(Object.keys(item));
 	});
-	metadata.types[item.post_type] = (metadata.types[item.post_type] || [])
-		.concat(Object.keys(item));
-});
 
-const blueprints_path = join(outdir, 'site', 'blueprints');
-await mkdir(join(blueprints_path, 'pages'), { recursive: true });
+	const blueprints_path = join(outdir, 'site', 'blueprints');
+	await mkdir(join(blueprints_path, 'pages'), { recursive: true });
 
-Object.keys(metadata.types).forEach(key => {
-	metadata.types[key] = Array.from(new Set(metadata.types[key])).sort();
-	// Make blueprints
-	const blueprint_content = metadata.types[key].reduce((acc, curr) => {
-		acc[curr] = {
-			type: 'text'
-		};
-		return acc;
-	}, {});
-	writeFile(join(blueprints_path, 'pages', key + '.yml'), dump({
-		tabs: {
-			fields: {
-				label: 'Fields',
-				sections: {
-					fields: {
-						type: 'fields',
-						fields: blueprint_content
-					}		
+	Object.keys(metadata.types).forEach(key => {
+		metadata.types[key] = Array.from(new Set(metadata.types[key])).sort();
+		// Make blueprints
+		const blueprint_content = metadata.types[key].reduce((acc, curr) => {
+			acc[curr] = {
+				type: 'text'
+			};
+			return acc;
+		}, {});
+		writeFile(join(blueprints_path, 'pages', key + '.yml'), dump({
+			tabs: {
+				fields: {
+					label: 'Fields',
+					sections: {
+						fields: {
+							type: 'fields',
+							fields: blueprint_content
+						}		
+					}
+				},
+				pages: {
+					label: 'Pages',
+					sections: {
+						pages: {
+							type: 'pages'
+						}
+					}
+				},
+				files: {
+					label: 'Files',
+					sections: {
+						files: {
+							type: 'files'
+						}
+					}
 				}
-			},
+			}
+		}));
+	});
+
+
+	const default_blueprint = {
+		tabs: {
 			pages: {
 				label: 'Pages',
 				sections: {
@@ -306,34 +337,15 @@ Object.keys(metadata.types).forEach(key => {
 				}
 			}
 		}
-	}));
-});
+	};
+	await writeFile(join(blueprints_path, 'pages', 'default.yml'), dump(default_blueprint));
+	await writeFile(join(blueprints_path, 'site.yml'), dump(default_blueprint));
 
-
-const default_blueprint = {
-	tabs: {
-		pages: {
-			label: 'Pages',
-			sections: {
-				pages: {
-					type: 'pages'
-				}
-			}
-		},
-		files: {
-			label: 'Files',
-			sections: {
-				files: {
-					type: 'files'
-				}
-			}
-		}
-	}
-};
-await writeFile(join(blueprints_path, 'pages', 'default.yml'), dump(default_blueprint));
-await writeFile(join(blueprints_path, 'site.yml'), dump(default_blueprint));
-
-await writeFile(join(outdir, 'metadata.json'), JSON.stringify(metadata, null, '\t'));
+	await writeFile(join(outdir, 'metadata.json'), JSON.stringify(metadata, null, '\t'));
+} else if (command === 'download') {
+	console.error('Not implemented yet, exiting.');
+	process.exit(1);
+}
 
 function printHelp() {
 	console.log(`wordpress-to-kirby: 
@@ -343,7 +355,15 @@ function printHelp() {
 
 Usage:
 	
-	wordpress-to-kirby <options> <xml-file>
+	wordpress-to-kirby <command> <xml-file> <options>
+
+Commands:
+
+	generate
+		Generate a Kirby CMS file structure from the provided XML file.
+
+	download
+		Download attachments. Not implemented.
 
 Options:
 
