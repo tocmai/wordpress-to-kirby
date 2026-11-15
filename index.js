@@ -236,7 +236,8 @@ for await (let item of items) {
 };
 
 const metadata = {
-	output: []
+	output: [],
+	types: {}
 };
 
 items.forEach(item => {
@@ -245,6 +246,12 @@ items.forEach(item => {
 		uuid: item.uuid,
 		path: relative(outdir, outpath(item))
 	});
+	metadata.types[item.post_type] = (metadata.types[item.post_type] || [])
+		.concat(Object.keys(item));
+});
+
+Object.keys(metadata.types).forEach(key => {
+	metadata.types[key] = Array.from(new Set(metadata.types[key])).sort();
 });
 
 await writeFile(join(outdir, 'metadata.json'), JSON.stringify(metadata, null, '\t'));
