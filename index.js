@@ -377,6 +377,8 @@ if (command === 'download') {
 			options.contentdir
 		) : null;
 
+	const fetched = new Set();
+
 	for await (let item of items.filter(it => it.post_type === 'attachment')) {
 		const attachment = process_item(item);
 		const dest = outpath(attachment).replace(/\.txt$/, '');
@@ -389,22 +391,32 @@ if (command === 'download') {
 				await copyFile(join(contentdir, pathname), dest);
 			} else {
 				const url = new URL(pathname, contentdir);
-				console.log(`Fetching: ${url}`);
+				if (fetched.has(url)) {
+					console.log(`Already fetched, skipping: ${url}`);
+				} else {
+					console.log(`Fetching: ${url}`);
+					await mkdir(dirname(dest), { recursive: true });
+					await writeFile(
+						dest,
+						(await fetch(url)).body
+					);
+					console.log(`Fetched: ${url}`);
+					fetched.add(url);
+				}
+			}
+		} else {
+			if (fetched.has(attachment.attachment_url)) {
+				console.log(`Already fetched, skipping: ${attachment.attachment_url}`);
+			} else {
+				console.log(`Fetching: ${attachment.attachment_url}`);
 				await mkdir(dirname(dest), { recursive: true });
 				await writeFile(
 					dest,
-					(await fetch(url)).body
+					(await fetch(attachment.attachment_url)).body
 				);
-				console.log(`Fetched: ${url}`);
+				console.log(`Fetched: ${attachment.attachment_url}`);
+				fetched.add(attachment.attachment_url);
 			}
-		} else {
-			console.log(`Fetching: ${attachment.attachment_url}`);
-			await mkdir(dirname(dest), { recursive: true });
-			await writeFile(
-				dest,
-				(await fetch(attachment.attachment_url)).body
-			);
-			console.log(`Fetched: ${attachment.attachment_url}`);
 		}
 		
 	}
