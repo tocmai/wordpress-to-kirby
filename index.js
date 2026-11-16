@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname, extname, relative } from 'node:path';
+import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises';
+import { join, dirname, extname, relative, sep } from 'node:path';
 
 import opsh from 'opsh';
 import { JSDOM } from 'jsdom';
@@ -367,9 +367,47 @@ if (command === 'generate') {
 	await writeFile(join(blueprints_path, 'site.yml'), dump(default_blueprint));
 
 	await writeFile(join(outdir, 'metadata.json'), JSON.stringify(metadata, null, '\t'));
-} else if (command === 'download') {
-	console.error('Not implemented yet, exiting.');
-	process.exit(1);
+}
+
+if (command === 'download') {
+
+	const contentdir = options.contentdir ? 
+		(URL.canParse(options.contentdir) ? 
+			new URL(options.contentdir) :
+			options.contentdir
+		) : null;
+
+	for await (let item of items.filter(it => it.post_type === 'attachment')) {
+		const attachment = process_item(item);
+		const dest = outpath(attachment).replace(/\.txt$/, '');
+		if (contentdir) {
+			const pathname = new URL(attachment.attachment_url).pathname
+				.split('/')
+				.filter(p => p && p !== 'wp-content')
+				.join(sep);
+			if (typeof contentdir === 'string') {
+				await copyFile(join(contentdir, pathname), dest);
+			} else {
+				const url = new URL(pathname, contentdir);
+				console.log(`Fetching: ${url}`);
+				await mkdir(dirname(dest), { recursive: true });
+				await writeFile(
+					dest,
+					(await fetch(url)).body
+				);
+				console.log(`Fetched: ${url}`);
+			}
+		} else {
+			console.log(`Fetching: ${attachment.attachment_url}`);
+			await mkdir(dirname(dest), { recursive: true });
+			await writeFile(
+				dest,
+				(await fetch(attachment.attachment_url)).body
+			);
+			console.log(`Fetched: ${attachment.attachment_url}`);
+		}
+		
+	}
 }
 
 function printHelp() {
@@ -388,7 +426,7 @@ Commands:
 		Generate a Kirby CMS file structure from the provided XML file.
 
 	download
-		Download attachments. Not implemented.
+		Download attachments.
 
 Options:
 
@@ -401,6 +439,12 @@ Options:
 	-o, --outdir
 		Root directory to output to, relative to CWD.
 		Default: 'wordpress-to-kirby'
+
+	--contentdir
+		Point to the location of the 'wp-content' directory
+		from which to download attachments when using
+		the 'download' command. Can be an absolute/relative 
+		local path, or a fully-qualified URL, including 'wp-content'.
 
 	--parse=<rules>
 		Instructions to parse some fields, in the form of:
