@@ -22,7 +22,7 @@ const { operands, options } = opsh(
 );
 
 if (options.h || options.help) {
-	await printHelp();
+	printHelp();
 	process.exit();
 }
 
@@ -91,12 +91,22 @@ function process_item(item) {
 	return Object.fromEntries(
 		entries.map(entry => [
 			entry[0],
-			serialize_value(entry[0], entry[1])
+			serialize_value(entry[0], entry[1], item.post_id)
 		])
 	);
 }
 
-function parse_value(key, value) {
+function abbr(value, len = 64) {
+	if (typeof value !== 'string') {
+		return value;
+	}
+	if (value.length <= len) {
+		return value;
+	} 
+	return value.slice(0, len) + '…';
+}
+
+function parse_value(key, value, id) {
 	if (!value) {
 		return value;
 	}
@@ -105,21 +115,21 @@ function parse_value(key, value) {
 			try {
 				return unserialize(value);
 			} catch(err) {
-				console.error(`Warn: Can’t serialize PHP value, skipping: ${value}`);
+				console.error(`Warn: Can’t parse PHP value in post ${id}, skipping: ${abbr(value)}`);
 				return value;
 			}
 		case 'yaml':
 			try {
 				return load(value);
 			} catch (err) {
-				console.error(`Warn: Can’t serialize YAML value, skipping: ${value}`);
+				console.error(`Warn: Can’t parse YAML value in post ${id}, skipping: ${abbr(value)}`);
 				return value;
 			}
 		case 'json':
 			try {
 				return JSON.parse(value);
 			} catch(err) {
-				console.error(`Warn: Can’t serialize JSON value, skipping: ${value}`);
+				console.error(`Warn: Can’t parse JSON value in post ${id}, skipping: ${abbr(value)}`);
 				return value;
 			}
 		case 'html':
@@ -128,7 +138,7 @@ function parse_value(key, value) {
 					`<!doctype html><html><head></head><body>${value}</body></html>`
 				).window.document;
 			} catch(err) {
-				console.error(`Warn: Can’t serialize JSON value, skipping: ${value}`);
+				console.error(`Warn: Can’t parse HTML value in post ${id}, skipping: ${abbr(value)}`);
 				return value;
 			}
 		default:
@@ -136,7 +146,7 @@ function parse_value(key, value) {
 	}
 }
 
-function serialize_value(key, value) {
+function serialize_value(key, value, id) {
 	if (!value) {
 		return value;
 	}
@@ -145,28 +155,28 @@ function serialize_value(key, value) {
 			try {
 				return serialize(value);
 			} catch(err) {
-				console.error(`Warn: Can’t stringify PHP value, skipping: ${value}`);
+				console.error(`Warn: Can’t serialize PHP value in post ${id}, skipping: ${abbr(value)}`);
 				return value;
 			}
 		case 'yaml':
 			try {
 				return dump(value);
 			} catch (err) {
-				console.error(`Warn: Can’t stringify YAML value, skipping: ${value}`);
+				console.error(`Warn: Can’t serialize YAML value in post ${id}, skipping: ${abbr(value)}`);
 				return value;
 			}
 		case 'json':
 			try {
 				return JSON.stringify(value);
 			} catch(err) {
-				console.error(`Warn: Can’t stringify JSON value, skipping: ${value}`);
+				console.error(`Warn: Can’t serialize JSON value in post ${id}, skipping: ${abbr(value)}`);
 				return value;
 			}
 		case 'html':
 			try {
 				return value.body.innerHTML;
 			} catch(err) {
-				console.error(`Warn: Can’t stringify HTML value, skipping: ${value}`);
+				console.error(`Warn: Can’t serialize HTML value in post ${id}, skipping: ${abbr(value)}`);
 				return value;
 			}
 		default:
@@ -202,37 +212,39 @@ function extract(item) {
 		return (el ?? item).querySelector(sel);
 	}
 
-	const post_type = parse_value('post_type', select('post_type', 'wp').textContent);
+	const post_id = parse_value('post_id', select('post_id', 'wp').textContent);
+
+	const post_type = parse_value('post_type', select('post_type', 'wp').textContent, post_id);
 
 	return {
-		title: parse_value('title', select('title').textContent),
-		link: parse_value('link', select('link').textContent),
-		pubDate: parse_value('pubDate', select('pubDate').textContent),
-		creator: parse_value('creator', select('creator', 'dc').textContent),
-		guid: parse_value('guid', select('guid').textContent),
-		guid_isPermaLink: parse_value('guid_isPermaLink', select('guid').getAttribute('isPermaLink')),
-		description: parse_value('description', select('description').textContent),
-		content: parse_value('content', select('encoded', 'content').textContent),
-		excerpt: parse_value('excerpt', select('encoded', 'excerpt').textContent),
-		post_id: parse_value('post_id', select('post_id', 'wp').textContent),
-		post_date: parse_value('post_date', select('post_date', 'wp').textContent),
-		post_date_gmt: parse_value('post_date_gmt', select('post_date_gmt', 'wp').textContent),
-		post_modified: parse_value('post_modified', select('post_modified', 'wp').textContent),
-		post_modified_gmt: parse_value('post_modified_gmt', select('post_modified_gmt', 'wp').textContent),
-		comment_status: parse_value('comment_status', select('comment_status', 'wp').textContent),
-		ping_status: parse_value('ping_status', select('ping_status', 'wp').textContent),
-		post_name: parse_value('post_name', select('post_name', 'wp').textContent),
-		status: parse_value('status', select('status', 'wp').textContent),
-		post_parent: parse_value('post_parent', select('post_parent', 'wp').textContent),
-		menu_order: parse_value('menu_order', select('menu_order', 'wp').textContent),
+		post_id,
 		post_type,
-		post_password: parse_value('post_password', select('post_password', 'wp').textContent),
-		attachment_url: parse_value('attachment_url', select('attachment_url', 'wp')?.textContent),
-		is_sticky: parse_value('is_sticky', select('is_sticky', 'wp').textContent),
+		title: parse_value('title', select('title').textContent, post_id),
+		link: parse_value('link', select('link').textContent, post_id),
+		pubDate: parse_value('pubDate', select('pubDate').textContent, post_id),
+		creator: parse_value('creator', select('creator', 'dc').textContent, post_id),
+		guid: parse_value('guid', select('guid').textContent, post_id),
+		guid_isPermaLink: parse_value('guid_isPermaLink', select('guid').getAttribute('isPermaLink'), post_id),
+		description: parse_value('description', select('description').textContent, post_id),
+		content: parse_value('content', select('encoded', 'content').textContent, post_id),
+		excerpt: parse_value('excerpt', select('encoded', 'excerpt').textContent, post_id),
+		post_date: parse_value('post_date', select('post_date', 'wp').textContent, post_id),
+		post_date_gmt: parse_value('post_date_gmt', select('post_date_gmt', 'wp').textContent, post_id),
+		post_modified: parse_value('post_modified', select('post_modified', 'wp').textContent, post_id),
+		post_modified_gmt: parse_value('post_modified_gmt', select('post_modified_gmt', 'wp').textContent, post_id),
+		comment_status: parse_value('comment_status', select('comment_status', 'wp').textContent, post_id),
+		ping_status: parse_value('ping_status', select('ping_status', 'wp').textContent, post_id),
+		post_name: parse_value('post_name', select('post_name', 'wp').textContent, post_id),
+		status: parse_value('status', select('status', 'wp').textContent, post_id),
+		post_parent: parse_value('post_parent', select('post_parent', 'wp').textContent, post_id),
+		menu_order: parse_value('menu_order', select('menu_order', 'wp').textContent, post_id),
+		post_password: parse_value('post_password', select('post_password', 'wp').textContent, post_id),
+		attachment_url: parse_value('attachment_url', select('attachment_url', 'wp')?.textContent, post_id),
+		is_sticky: parse_value('is_sticky', select('is_sticky', 'wp').textContent, post_id),
 		...select('postmeta', 'wp', true).reduce((acc, it) => {
 			const key = select('meta_key', 'wp', false, it).textContent;
 			const value = select('meta_value', 'wp', false, it).textContent;
-			acc['postmeta' + key] = parse_value('postmeta' + key, value);
+			acc['postmeta' + key] = parse_value('postmeta' + key, value, post_id);
 			return acc;
 		}, {}),
 		uuid: uuid(),
@@ -255,7 +267,7 @@ function outpath(item) {
 }
 
 if (command === 'generate') {
-	for await (let item of items) {
+	for (let item of items) {
 		const destination = outpath(item);
 		await mkdir(dirname(destination), { recursive: true });
 		await writeFile(destination, serialize_item(process_item(item)));
@@ -379,7 +391,7 @@ if (command === 'download') {
 
 	const fetched = new Set();
 
-	for await (let item of items.filter(it => it.post_type === 'attachment')) {
+	for (let item of items.filter(it => it.post_type === 'attachment')) {
 		const attachment = process_item(item);
 		const dest = outpath(attachment).replace(/\.txt$/, '');
 		if (contentdir) {
