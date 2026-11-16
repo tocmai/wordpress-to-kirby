@@ -75,18 +75,18 @@ commasep(options.serialize).forEach(pair => {
 	serializers[key] = val;
 });
 
-const keys_to_include = new Set(commasep(options['include-keys']));
-const keys_to_exclude = new Set(options['include-keys'] ? [] : commasep(options['exclude-keys']));
+const fields_to_include = new Set(commasep(options['include-fields']));
+const fields_to_exclude = new Set(options['include-fields'] ? [] : commasep(options['exclude-fields']));
 
 const types_to_include = new Set(commasep(options['include-types']));
 const types_to_exclude = new Set(options['include-types'] ? [] : commasep(options['exclude-types']));
 
 function process_item(item) {
 	let entries = Object.entries(item);
-	if (keys_to_include.size) {
-		entries = entries.filter(entry => keys_to_include.has(entry[0]));
-	} else if (keys_to_exclude.size) {
-		entries = entries.filter(entry => !keys_to_exclude.has(entry[0]));
+	if (fields_to_include.size) {
+		entries = entries.filter(entry => fields_to_include.has(entry[0]));
+	} else if (fields_to_exclude.size) {
+		entries = entries.filter(entry => !fields_to_exclude.has(entry[0]));
 	}
 	return Object.fromEntries(
 		entries.map(entry => [
@@ -425,14 +425,14 @@ if (command === 'download') {
 function printHelp() {
 	console.log(`wordpress-to-kirby: 
 
-	transform a WordPress XML export 
-	into a directory of Kirby CMS files.
+	transform a WordPress XML export into a directory of Kirby CMS files.
 
 Usage:
 	
-	wordpress-to-kirby <command> <xml-file> <options>
+	wordpress-to-kirby generate [options] <wordpress-xml-file>
+	wordpress-to-kirby download [options] <wordpress-xml-file>
 
-Commands:
+Commands available:
 
 	generate
 		Generate a Kirby CMS file structure from the provided XML file.
@@ -440,57 +440,80 @@ Commands:
 	download
 		Download attachments.
 
-Options:
+Options available:
 
 	-h, --help
-		Print out this help information.
+
+		Prints out this help information.
 
 	-v, --version
-		Show the program version.
+
+		Shows the program version.
 
 	-o, --outdir
-		Root directory to output to, relative to CWD.
+
+		Root directory to which to write the output, 
+		relative to the current working directory.
+		
 		Default: 'wordpress-to-kirby'
 
 	--contentdir
-		Point to the location of the 'wp-content' directory
-		from which to download attachments when using
-		the 'download' command. Can be an absolute/relative 
-		local path, or a fully-qualified URL, including 'wp-content'.
+
+		For the 'download' command, point to the location 
+		of a 'wp-content' directory from which to download attachments. 
+		
+		The path can be:
+		
+		* an absolute or relative local path;
+		* a fully-qualified URL, including the 'wp-content' segment,
+		  e.g. https://mywebsite.local/wp-content/
 
 	--parse=<rules>
-		Instructions to parse some fields, in the form of:
+		
+		Instructions to parse some fields, specified as:
 		"<key>=<parser>,<key>=<parser>,…"
+		
 		Supported parsers:
-			php: deserialize PHP object.
-			yaml: parse as YAML.
-			json: parse as JSON.
-			html: parse as HTML.
-		Prefix post meta fields with "postmeta".
+		* php: deserialize PHP object.
+		* yaml: parse as YAML.
+		* json: parse as JSON.
+		* html: parse as HTML.
 
 	--serialize=<rules>
-		Instructions to serialize some fields, in the form of:
+		
+		Instructions to serialize some fields, specified as:
 		"<key>=<serializer>,<key>=<serializer>,…"
-		Supported parsers:
-			php: serialize as PHP object.
-			yaml: serialize as YAML.
-			json: serialize as JSON.
-			html: serialize as HTML.
-		Prefix post meta fields with "postmeta".
 
-	--exclude-keys=<keys>
-		Exclude certain keys from the output. Comma-separated.
+		Supported serializers:
+		* php: serialize as PHP object.
+		* yaml: serialize as YAML.
+		* json: serialize as JSON.
+		* html: serialize as HTML.
 
-	--include-keys=<keys>
-		Only include certain keys from the output. Comma-separated.
-		When '--include-keys' is specified, any '--exclude-keys' is ignored.
+	--exclude-fields=<fields>
+
+		Exclude certain fields from the output, specified as a 
+		comma-separated list of fields.
+
+	--include-fields=<fields>
+
+		Only include certain fields from the output, specified as a 
+		comma-separated list of fields. 
+
+		When '--include-fields' is specified, the '--exclude-fields' 
+		option is ignored.
 
 	--exclude-types=<types>
-		Exclude certain post types from the output. Comma-separated.
+
+		Exclude certain post types from the output, specified as a 
+		comma-separated list of post types.
 
 	--include-types=<types>
-		Only include certain post types from the output. Comma-separated.
-		When '--include-types' is specified, any '--exclude-types' is ignored.
+		Only include certain post types from the output, specified as a
+		comma-separated list of post types.
+
+		When '--include-types' is specified, the '--exclude-types'
+		option is ignored.
 
 Keys extracted from the XML:
 
@@ -505,11 +528,12 @@ Keys extracted from the XML:
 
 	Post metadata:
 
-		Fields from <wp:postmeta> not starting with an underscore
-		are included in the output with the 'postmeta*' prefix.
+		Fields from '<wp:postmeta>' are included in the output 
+		with the 'postmeta*' prefix.
 
 Keys generated from scratch:
 
-		uuid — sixteen random alphanumeric characters.
+	uuid — sixteen random alphanumeric characters.
+	template: 'attachment' — added to attachments only.
 `);
 }
