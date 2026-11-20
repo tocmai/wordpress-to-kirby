@@ -444,6 +444,7 @@ if (command === 'download') {
 				.filter(p => p && p !== 'wp-content')
 				.join(sep);
 			if (typeof contentdir === 'string') {
+				await mkdir(dirname(dest), { recursive: true });
 				await copyFile(join(contentdir, pathname), dest);
 			} else {
 				const url = new URL(pathname, contentdir);
