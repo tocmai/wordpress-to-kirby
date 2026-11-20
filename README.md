@@ -1,8 +1,8 @@
 # wordpress-to-kirby
 
-![logo](./.github/wordpress-to-kirby.svg)
+<img src="./.github/wordpress-to-kirby.svg" height='60'>
 
-<a href="https://www.npmjs.org/package/wordpress-to-kirby"><img src="https://img.shields.io/npm/v/wordpress-to-kirby.svg?style=flat-square&labelColor=CC9252&color=black" alt="npm version"></a>
+<a href="https://www.npmjs.org/package/wordpress-to-kirby"><img src="https://img.shields.io/npm/v/wordpress-to-kirby.svg?style=flat-square&labelColor=EEEEEE&color=black" alt="npm version"></a>
 
 A Node.js-based command-line utility to convert a WordPress XML export to a directory of Kirby CMS files.
 
