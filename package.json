@@ -21,7 +21,6 @@
   "dependencies": {
     "js-yaml": "^5.5.0",
     "jsdom": "^31.0.1",
-    "opsh": "^1.1.0",
     "php-serialize": "^5.1.3"
   }
 }

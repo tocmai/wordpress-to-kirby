@@ -44,15 +44,27 @@ wordpress-to-kirby download [options] <wordpress-xml-file>
 
 Prints out this help information.
 
+```bash
+wordpress-to-kirby --help
+```
+
 #### `-v, --version`
 
 Shows the program version.
 
-#### `-o, --outdir`
+```bash
+wordpress-to-kirby --version
+```
+
+#### `-o, --outdir=<path>`
 
 Root directory to which to write the output, relative to the current working directory. Default: `wordpress-to-kirby`.
 
-#### `--contentdir`
+```bash
+wordpress-to-kirby generate my-blog.xml -o my-blog 
+```
+
+#### `--contentdir=<path>`
 
 For the `download` command, point to the location of a `wp-content` directory from which to download attachments. 
 		
@@ -61,9 +73,15 @@ The path can be:
 * an absolute or relative local path;
 * a fully-qualified URL, including the `wp-content` segment, e.g. `https://mywebsite.local/wp-content/`
 
+```bash
+wordpress-to-kirby download my-blog.xml -o my-blog --contentdir=path/to/downloaded-wp-content
+```
+
 #### `--parse=<rules>`
 		
 Instructions to parse some fields, specified as `<key>=<parser>,<key>=<parser>,…`.
+
+The `--parse` option can be used multiple times.
 		
 Supported parsers:
 
@@ -72,9 +90,15 @@ Supported parsers:
 * `json`: parse as JSON;
 * `html`: parse as HTML.
 
+```bash
+wordpress-to-kirby generate my-blog.xml --parse=content=html
+```
+
 #### `--serialize=<rules>`
 		
 Instructions to serialize some fields, specified as `<key>=<serializer>,<key>=<serializer>,…`.
+
+The `--serialize` option can be used multiple times.
 
 Supported serializers:
 
@@ -83,23 +107,49 @@ Supported serializers:
 * `json`: serialize as JSON;
 * `html`: serialize as HTML.
 
+```bash
+wordpress-to-kirby generate my-blog.xml --serialize=content=html
+```
+
 ### `--exclude-fields=<fields>`
 
 Exclude certain fields from the output, specified as a comma-separated list of fields.
+
+The `--exclude-fields` option can be used multiple times.
+
+```bash
+wordpress-to-kirby generate my-blog.xml --exclude-fields=guid_isPermalink,comment_status,ping_status
+```
 
 ### `--include-fields=<fields>`
 
 Only include certain fields from the output, specified as a comma-separated list of fields. When `--include-fields` is specified, the `--exclude-fields` option is ignored.
 
+The `--include-fields` option can be used multiple times.
+
+```bash
+wordpress-to-kirby generate my-blog.xml --include-fields=title,content,uuid
+```
+
 ### `--exclude-types=<types>`
 
 Exclude certain post types from the output, specified as a comma-separated list of post types.
 
+The `--exclude-types` option can be used multiple times.
+
+```bash
+wordpress-to-kirby generate my-blog.xml --exclude-types=nav_menu_item
+```
+
 ### `--include-types=<types>`
 	
-Only include certain post types from the output, specified as a comma-separated list of post types.
+Only include certain post types from the output, specified as a comma-separated list of post types. When `--include-types` is specified, the `--exclude-types` option is ignored.
 
-When `--include-types` is specified, the `--exclude-types` option is ignored.
+The `--include-types` option can be used multiple times.
+
+```bash
+wordpress-to-kirby generate my-blog.xml --include-types=post,page,film,venue
+```
 
 ## Keys extracted from the XML
 

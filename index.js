@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { readFile, writeFile, copyFile, mkdir } from 'node:fs/promises';
 import { join, dirname, extname, relative, sep } from 'node:path';
+import { parseArgs } from 'node:util';
 
-import opsh from 'opsh';
 import { JSDOM } from 'jsdom';
 import { load, dump } from 'js-yaml';
 import { serialize, unserialize } from 'php-serialize';
@@ -16,17 +16,58 @@ async function getPackage() {
 	);
 }
 
-const { operands, options } = opsh(
-	process.argv.slice(2),
-	['help', 'h', 'version', 'v']
-);
+const { positionals: operands, values: options } = parseArgs({
+	options: {
+		help: {
+			type: 'boolean',
+			short: 'h'
+		},
+		version: {
+			type: 'boolean',
+			short: 'v'
+		},
+		parse: {
+			type: 'string',
+			multiple: true
+		},
+		stringify: {
+			type: 'string',
+			multiple: true
+		},
+		outdir: {
+			type: 'string',
+			short: 'o',
+			default: 'wordpress-to-kirby'
+		},
+		contentdir: {
+			type: 'string'
+		},
+		'include-fields': {
+			type: 'string',
+			multiple: true
+		},
+		'exclude-fields': {
+			type: 'string',
+			multiple: true
+		},
+		'include-types': {
+			type: 'string',
+			multiple: true
+		},
+		'exclude-types': {
+			type: 'string',
+			multiple: true
+		}
+	},
+	allowPositionals: true
+});
 
-if (options.h || options.help) {
+if (options.help) {
 	printHelp();
 	process.exit();
 }
 
-if (options.v || options.version) {
+if (options.version) {
 	const pkg = await getPackage();
 	console.log(pkg.version);
 	process.exit();
@@ -51,8 +92,11 @@ const serializers = {
 	'postmeta_wp_attachment_metadata': 'json'
 };
 
-function commasep(val) {
-	return (val || '').split(/\s*,\s*/).filter(Boolean);
+function commasep(arr = []) {
+	return arr
+		.map(val => (val || '').split(/\s*,\s*/))
+		.flat()
+		.filter(Boolean);
 }
 
 commasep(options.parse).forEach(pair => {
@@ -252,7 +296,7 @@ function extract(item) {
 	}
 }
 
-const outdir = options.o || options.outdir || 'wordpress-to-kirby';
+const outdir = options.outdir;
 
 function outpath(item) {
 	let parts = (new URL(item.link)).pathname.split('/').filter(Boolean);
@@ -462,14 +506,14 @@ Options available:
 
 		Shows the program version.
 
-	-o, --outdir
+	-o <path>, --outdir=<path>
 
 		Root directory to which to write the output, 
 		relative to the current working directory.
 		
 		Default: 'wordpress-to-kirby'
 
-	--contentdir
+	--contentdir=<path>
 
 		For the 'download' command, point to the location 
 		of a 'wp-content' directory from which to download attachments. 
@@ -483,7 +527,9 @@ Options available:
 	--parse=<rules>
 		
 		Instructions to parse some fields, specified as:
-		"<key>=<parser>,<key>=<parser>,…"
+		"<key>=<parser>,<key>=<parser>,…".
+
+		The option can be used multiple times.
 		
 		Supported parsers:
 		* php: deserialize PHP object.
@@ -496,6 +542,8 @@ Options available:
 		Instructions to serialize some fields, specified as:
 		"<key>=<serializer>,<key>=<serializer>,…"
 
+		The option can be used multiple times.
+
 		Supported serializers:
 		* php: serialize as PHP object.
 		* yaml: serialize as YAML.
@@ -505,12 +553,12 @@ Options available:
 	--exclude-fields=<fields>
 
 		Exclude certain fields from the output, specified as a 
-		comma-separated list of fields.
+		comma-separated list of fields. Can be used multiple times.
 
 	--include-fields=<fields>
 
 		Only include certain fields from the output, specified as a 
-		comma-separated list of fields. 
+		comma-separated list of fields. Can be used multiple times.
 
 		When '--include-fields' is specified, the '--exclude-fields' 
 		option is ignored.
@@ -518,11 +566,11 @@ Options available:
 	--exclude-types=<types>
 
 		Exclude certain post types from the output, specified as a 
-		comma-separated list of post types.
+		comma-separated list of post types. Can be used multiple times.
 
 	--include-types=<types>
 		Only include certain post types from the output, specified as a
-		comma-separated list of post types.
+		comma-separated list of post types. Can be used multiple times.
 
 		When '--include-types' is specified, the '--exclude-types'
 		option is ignored.
