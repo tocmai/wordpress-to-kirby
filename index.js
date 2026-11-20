@@ -57,6 +57,9 @@ const { positionals: operands, values: options } = parseArgs({
 		'exclude-types': {
 			type: 'string',
 			multiple: true
+		},
+		'only-metadata': {
+			type: 'boolean'
 		}
 	},
 	allowPositionals: true
@@ -311,118 +314,134 @@ function outpath(item) {
 }
 
 if (command === 'generate') {
-	for (let item of items) {
-		const destination = outpath(item);
-		await mkdir(dirname(destination), { recursive: true });
-		await writeFile(destination, serialize_item(process_item(item)));
-	};
+
+	const processed_items = items.map(process_item);
 
 	const metadata = {
 		output: [],
 		types: {}
 	};
 
-	items.forEach(item => {
+	processed_items.forEach((item, idx) => {
+		/* 
+			Some of these fields may have been omitted from the object,
+			but we still need them for metadata purposes.
+		*/
+		const full_item = items[idx];
 		metadata.output.push({
-			post_id: +item.post_id,
-			post_type: item.post_type,
-			url: item.attachment_url ?? item.link,
-			uuid: item.uuid,
-			path: relative(outdir, outpath(item))
+			post_id: +full_item.post_id,
+			post_type: full_item.post_type,
+			url: full_item.attachment_url ?? full_item.link,
+			uuid: full_item.uuid,
+			path: relative(outdir, outpath(full_item))
 		});
-		metadata.types[item.post_type] = (metadata.types[item.post_type] || [])
-			.concat(Object.keys(item));
+		metadata.types[full_item.post_type] = [].concat(
+			metadata.types[full_item.post_type],
+			Object.keys(item)
+		);
 	});
-
-	const blueprints_path = join(outdir, 'site', 'blueprints');
-	await mkdir(join(blueprints_path, 'pages'), { recursive: true });
-	await mkdir(join(blueprints_path, 'files'), { recursive: true });
 
 	Object.keys(metadata.types).forEach(key => {
 		metadata.types[key] = Array.from(new Set(metadata.types[key])).sort();
-		// Make blueprints
-		const blueprint_content = metadata.types[key].reduce((acc, curr) => {
-			acc[curr] = {
-				type: 'text'
-			};
-			return acc;
-		}, {});
-
-		if (key === 'attachment') {
-			const blueprint_dest = join(
-				blueprints_path, 
-				'files', 
-				key + '.yml'
-			);
-
-			writeFile(blueprint_dest, dump({
-				fields: blueprint_content
-			}));
-
-		} else {
-			const blueprint_dest = join(
-				blueprints_path, 
-				'pages', 
-				key + '.yml'
-			);
-
-			writeFile(blueprint_dest, dump({
-				tabs: {
-					fields: {
-						label: 'Fields',
-						sections: {
-							fields: {
-								type: 'fields',
-								fields: blueprint_content
-							}		
-						}
-					},
-					pages: {
-						label: 'Pages',
-						sections: {
-							pages: {
-								type: 'pages'
-							}
-						}
-					},
-					files: {
-						label: 'Files',
-						sections: {
-							files: {
-								type: 'files'
-							}
-						}
-					}
-				}
-			}));
-		}
 	});
 
+	await mkdir(outdir, { recursive: true });
+	await writeFile(join(outdir, 'metadata.json'), JSON.stringify(metadata, null, '\t'));
 
-	const default_blueprint = {
-		tabs: {
-			pages: {
-				label: 'Pages',
-				sections: {
-					pages: {
-						type: 'pages'
+	if (!options['only-metadata']) {
+
+		for (let item of processed_items) {
+			const destination = outpath(item);
+			await mkdir(dirname(destination), { recursive: true });
+			await writeFile(destination, serialize_item(item));
+		};
+
+		const blueprints_path = join(outdir, 'site', 'blueprints');
+		await mkdir(join(blueprints_path, 'pages'), { recursive: true });
+		await mkdir(join(blueprints_path, 'files'), { recursive: true });
+
+		// Make blueprints
+		Object.keys(metadata.types).forEach(key => {
+			const blueprint_content = metadata.types[key].reduce((acc, curr) => {
+				acc[curr] = {
+					type: 'text'
+				};
+				return acc;
+			}, {});
+
+			if (key === 'attachment') {
+				const blueprint_dest = join(
+					blueprints_path, 
+					'files', 
+					key + '.yml'
+				);
+
+				writeFile(blueprint_dest, dump({
+					fields: blueprint_content
+				}));
+
+			} else {
+				const blueprint_dest = join(
+					blueprints_path, 
+					'pages', 
+					key + '.yml'
+				);
+
+				writeFile(blueprint_dest, dump({
+					tabs: {
+						fields: {
+							label: 'Fields',
+							sections: {
+								fields: {
+									type: 'fields',
+									fields: blueprint_content
+								}		
+							}
+						},
+						pages: {
+							label: 'Pages',
+							sections: {
+								pages: {
+									type: 'pages'
+								}
+							}
+						},
+						files: {
+							label: 'Files',
+							sections: {
+								files: {
+									type: 'files'
+								}
+							}
+						}
 					}
-				}
-			},
-			files: {
-				label: 'Files',
-				sections: {
-					files: {
-						type: 'files'
+				}));
+			}
+		});
+
+		const default_blueprint = {
+			tabs: {
+				pages: {
+					label: 'Pages',
+					sections: {
+						pages: {
+							type: 'pages'
+						}
+					}
+				},
+				files: {
+					label: 'Files',
+					sections: {
+						files: {
+							type: 'files'
+						}
 					}
 				}
 			}
-		}
-	};
-	await writeFile(join(blueprints_path, 'pages', 'default.yml'), dump(default_blueprint));
-	await writeFile(join(blueprints_path, 'site.yml'), dump(default_blueprint));
-
-	await writeFile(join(outdir, 'metadata.json'), JSON.stringify(metadata, null, '\t'));
+		};
+		await writeFile(join(blueprints_path, 'pages', 'default.yml'), dump(default_blueprint));
+		await writeFile(join(blueprints_path, 'site.yml'), dump(default_blueprint));
+	}
 }
 
 if (command === 'download') {
@@ -492,9 +511,11 @@ Usage:
 Commands available:
 
 	generate
+		
 		Generate a Kirby CMS file structure from the provided XML file.
 
 	download
+		
 		Download attachments.
 
 Options available:
@@ -570,11 +591,16 @@ Options available:
 		comma-separated list of post types. Can be used multiple times.
 
 	--include-types=<types>
+		
 		Only include certain post types from the output, specified as a
 		comma-separated list of post types. Can be used multiple times.
 
 		When '--include-types' is specified, the '--exclude-types'
 		option is ignored.
+
+	--only-metadata
+
+		For the 'generate' command, only generate the 'metadata.json' file.
 
 Keys extracted from the XML:
 

@@ -42,9 +42,7 @@ wordpress-to-kirby download [options] <wordpress-xml-file>
 
 ## Options
 
-### General options
-
-#### `-h, --help`
+### `-h, --help`
 
 Prints out this help information.
 
@@ -52,7 +50,7 @@ Prints out this help information.
 wordpress-to-kirby --help
 ```
 
-#### `-v, --version`
+### `-v, --version`
 
 Shows the program version.
 
@@ -60,7 +58,7 @@ Shows the program version.
 wordpress-to-kirby --version
 ```
 
-#### `-o, --outdir=<path>`
+### `-o, --outdir=<path>`
 
 Root directory to which to write the output, relative to the current working directory. Default: `wordpress-to-kirby`.
 
@@ -68,7 +66,7 @@ Root directory to which to write the output, relative to the current working dir
 wordpress-to-kirby generate my-blog.xml -o my-blog 
 ```
 
-#### `--contentdir=<path>`
+### `--contentdir=<path>`
 
 For the `download` command, point to the location of a `wp-content` directory from which to download attachments. 
 		
@@ -81,7 +79,7 @@ The path can be:
 wordpress-to-kirby download my-blog.xml -o my-blog --contentdir=path/to/downloaded-wp-content
 ```
 
-#### `--parse=<rules>`
+### `--parse=<rules>`
 		
 Instructions to parse some fields, specified as `<key>=<parser>,<key>=<parser>,…`.
 
@@ -98,7 +96,7 @@ Supported parsers:
 wordpress-to-kirby generate my-blog.xml --parse=content=html
 ```
 
-#### `--serialize=<rules>`
+### `--serialize=<rules>`
 		
 Instructions to serialize some fields, specified as `<key>=<serializer>,<key>=<serializer>,…`.
 
@@ -154,6 +152,10 @@ The `--include-types` option can be used multiple times.
 ```bash
 wordpress-to-kirby generate my-blog.xml --include-types=post,page,film,venue
 ```
+
+### `--only-metadata`
+
+For the `generate` command, only generate the `metadata.json` file.
 
 ## Keys extracted from the XML
 
