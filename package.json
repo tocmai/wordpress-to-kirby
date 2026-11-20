@@ -1,6 +1,6 @@
 {
   "name": "wordpress-to-kirby",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A CLI to convert WordPress XML to Kirby CMS files",
   "homepage": "https://github.com/tocmai/wordpress-to-kirby#readme",
   "bugs": {
