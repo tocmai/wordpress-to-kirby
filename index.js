@@ -379,7 +379,7 @@ if (command === 'generate') {
 		await mkdir(join(blueprints_path, 'files'), { recursive: true });
 
 		// Make blueprints
-		Object.keys(metadata.types).forEach(key => {
+		for (let key of Object.keys(metadata.types)) {
 			const blueprint_content = metadata.types[key].reduce((acc, curr) => {
 				acc[curr] = {
 					type: 'text'
@@ -443,7 +443,7 @@ if (command === 'generate') {
 					process.stderr.write(`Path not inside output directory, skipping: ${blueprint_dest}\n`);
 				}
 			}
-		});
+		}
 
 		const default_blueprint = {
 			tabs: {
