@@ -98,6 +98,15 @@ Supported parsers:
 * `json`: parse as JSON;
 * `html`: parse as HTML.
 
+Commands from the [`trimd`](https://github.com/danburzo/trimd/) utility are also supported in the `parse` and/or `serialize` step. They receive a string in one format and produce a string in another: 
+
+* `markdown`: HTML to Markdown.
+* `remarkdown`: Markdown to normalized Markdown.
+* `markup`: Markdown to HTML.
+* `demarkdown`: Markdown to plain text.
+* `demarkup`: HTML to plain text.
+* `remarkup`: HTML to simplified HTML (via HTML to Markdown and back).
+
 ```bash
 wordpress-to-kirby generate my-blog.xml --parse=content=html
 ```
@@ -114,6 +123,15 @@ Supported serializers:
 * `yaml`: serialize as YAML;
 * `json`: serialize as JSON;
 * `html`: serialize as HTML.
+
+Commands from the [`trimd`](https://github.com/danburzo/trimd/) utility are also supported in the `parse` and/or `serialize` step. They receive a string in one format and produce a string in another: 
+
+* `markdown`: HTML to Markdown.
+* `remarkdown`: Markdown to normalized Markdown.
+* `markup`: Markdown to HTML.
+* `demarkdown`: Markdown to plain text.
+* `demarkup`: HTML to plain text.
+* `remarkup`: HTML to simplified HTML (via HTML to Markdown and back).
 
 ```bash
 wordpress-to-kirby generate my-blog.xml --serialize=content=html

@@ -6,6 +6,14 @@ import { parseArgs } from 'node:util';
 import { JSDOM } from 'jsdom';
 import { load, dump } from 'js-yaml';
 import { serialize, unserialize } from 'php-serialize';
+import { 
+	getHtmlToMdProcessor,
+	getMdToMdProcessor,
+	getMdToHtmlProcessor,
+	getMdToTextProcessor,
+	getHtmlToTextProcessor,
+	getHtmlToHtmlProcessor 
+} from 'trimd';
 
 import { serialize as serialize_item } from './src/kirby-txt.js';
 import { uuid } from './src/uuid.js';
@@ -160,6 +168,14 @@ function abbr(value, len = 64) {
 	return value.slice(0, len) + '…';
 }
 
+const MD_DEFAULTS = {
+	fences: true,
+	emphasis: '_',
+	strong: '_',
+	resourceLink: true,
+	rule: '-'
+};
+
 function parse_value(key, value, id) {
 	if (!value) {
 		return value;
@@ -195,6 +211,54 @@ function parse_value(key, value, id) {
 				process.stderr.write(`Warn: Can’t parse HTML value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
 			}
+		case 'markdown':
+			try {
+				return getHtmlToMdProcessor(MD_DEFAULTS).processSync(value).toString();
+			} catch(err) {
+				process.stderr.write(`Warn: Can’t parse HTML value in post ${id}, skipping: ${abbr(value)}\n`);
+				return value;
+			}
+			break;
+		case 'remarkdown':
+			try {
+				return getMdToMdProcessor(MD_DEFAULTS).processSync(value);
+			} catch(err) {
+				process.stderr.write(`Warn: Can’t parse Markdown value in post ${id}, skipping: ${abbr(value)}\n`);
+				return value;
+			}
+			break;
+		case 'markup':
+			try {
+				return getMdToHtmlProcessor().processSync(value);
+			} catch(err) {
+				process.stderr.write(`Warn: Can’t parse Markdown value in post ${id}, skipping: ${abbr(value)}\n`);
+				return value;
+			}
+			break;
+		case 'demarkdown':
+			try {
+				return getMdToTextProcessor().processSync(value);
+			} catch(err) {
+				process.stderr.write(`Warn: Can’t parse Markdown value in post ${id}, skipping: ${abbr(value)}\n`);
+				return value;
+			}
+			break;
+		case 'demarkup':
+			try {
+				return getHtmlToTextProcessor().processSync(value);
+			} catch(err) {
+				process.stderr.write(`Warn: Can’t parse HTML value in post ${id}, skipping: ${abbr(value)}\n`);
+				return value;
+			}
+			break;
+		case 'remarkup':
+			try {
+				return getHtmlToHtmlProcessor().processSync(value);
+			} catch(err) {
+				process.stderr.write(`Warn: Can’t parse HTML value in post ${id}, skipping: ${abbr(value)}\n`);
+				return value;
+			}
+			break;
 		default:
 			return value;
 	}
@@ -233,6 +297,54 @@ function serialize_value(key, value, id) {
 				process.stderr.write(`Warn: Can’t serialize HTML value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
 			}
+		case 'markdown':
+			try {
+				return getHtmlToMdProcessor(MD_DEFAULTS).processSync(value).toString();
+			} catch(err) {
+				process.stderr.write(`Warn: Can’t serialize HTML value in post ${id}, skipping: ${abbr(value)}\n`);
+				return value;
+			}
+			break;
+		case 'remarkdown':
+			try {
+				return getMdToMdProcessor(MD_DEFAULTS).processSync(value);
+			} catch(err) {
+				process.stderr.write(`Warn: Can’t serialize Markdown value in post ${id}, skipping: ${abbr(value)}\n`);
+				return value;
+			}
+			break;
+		case 'markup':
+			try {
+				return getMdToHtmlProcessor().processSync(value);
+			} catch(err) {
+				process.stderr.write(`Warn: Can’t serialize Markdown value in post ${id}, skipping: ${abbr(value)}\n`);
+				return value;
+			}
+			break;
+		case 'demarkdown':
+			try {
+				return getMdToTextProcessor().processSync(value);
+			} catch(err) {
+				process.stderr.write(`Warn: Can’t serialize Markdown value in post ${id}, skipping: ${abbr(value)}\n`);
+				return value;
+			}
+			break;
+		case 'demarkup':
+			try {
+				return getHtmlToTextProcessor().processSync(value);
+			} catch(err) {
+				process.stderr.write(`Warn: Can’t serialize HTML value in post ${id}, skipping: ${abbr(value)}\n`);
+				return value;
+			}
+			break;
+		case 'remarkup':
+			try {
+				return getHtmlToHtmlProcessor().processSync(value);
+			} catch(err) {
+				process.stderr.write(`Warn: Can’t serialize HTML value in post ${id}, skipping: ${abbr(value)}\n`);
+				return value;
+			}
+			break;
 		default:
 			return value;
 	}
@@ -622,6 +734,12 @@ Options available:
 		* yaml: parse as YAML.
 		* json: parse as JSON.
 		* html: parse as HTML.
+		* markdown: parse as HTML and convert to Markdown string.
+		* remarkdown: parse and normalize as Markdown.
+		* markup: parse as Markdown and convert to an HMTL string.
+		* demarkdown: parse as Markdown and convert to plain text.
+		* demarkup: parse as HTML and convert to plain text.
+		* remarkup: parse as HTML and simplify it by converting to Markdown and back.
 
 	--serialize=<rules>
 		
@@ -635,6 +753,13 @@ Options available:
 		* yaml: serialize as YAML.
 		* json: serialize as JSON.
 		* html: serialize as HTML.
+		* markdown: serialize HTML string as Markdown string.
+		* remarkdown: serialize Markdown string as Markdown string.
+		* markup: serialize Markdown string as HMTL string.
+		* demarkdown: serialize Markdown string as plain text.
+		* demarkup: serialize HTML string as plain text.
+		* remarkup: serialize HTML string as a simplified version 
+		  (by converting to Markdown and back)
 
 	--exclude-fields=<fields>
 
