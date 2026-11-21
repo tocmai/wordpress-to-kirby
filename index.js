@@ -32,7 +32,7 @@ const { positionals: operands, values: options } = parseArgs({
 			type: 'string',
 			multiple: true
 		},
-		stringify: {
+		serialize: {
 			type: 'string',
 			multiple: true
 		},
@@ -346,10 +346,9 @@ if (command === 'generate') {
 			uuid: full_item.uuid,
 			path: relative(outdir, outpath(full_item))
 		});
-		metadata.types[full_item.post_type] = [].concat(
-			metadata.types[full_item.post_type],
-			Object.keys(item)
-		);
+		metadata.types[full_item.post_type] = 
+			(metadata.types[full_item.post_type] || [])
+				.concat(Object.keys(item));
 	});
 
 	Object.keys(metadata.types).forEach(key => {
@@ -514,7 +513,7 @@ if (command === 'download') {
 				await copyFile(join(contentdir, pathname), dest);
 			} else {
 				const url = new URL(pathname, contentdir);
-				if (fetched.has(url)) {
+				if (fetched.has(url.toString())) {
 					process.stderr.write(`Already fetched, skipping: ${url}\n`);
 				} else {
 					if (inside(outdir, dest)) {
@@ -527,7 +526,7 @@ if (command === 'download') {
 						} else {
 							process.stderr.write(`Error fetching: ${url}\n`);
 						}
-						fetched.add(url);
+						fetched.add(url.toString());
 					} else {
 						process.stderr.write(`Path not inside output directory, skipping: ${dest}\n`);
 					}
@@ -564,8 +563,8 @@ function printHelp() {
 
 Usage:
 	
-	wordpress-to-kirby generate [options] <wordpress-xml-file>
-	wordpress-to-kirby download [options] <wordpress-xml-file>
+	wordpress-to-kirby generate [options] <input-file>
+	wordpress-to-kirby download [options] <input-file>
 
 Commands available:
 
@@ -575,7 +574,9 @@ Commands available:
 
 	download
 		
-		Download attachments.
+		Download attachments from the input file, which can be either
+		a WordPress XML export file or a JSON metadata file produced
+		by the 'generate' command.
 
 Options available:
 
