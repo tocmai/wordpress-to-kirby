@@ -395,7 +395,7 @@ if (command === 'generate') {
 				);
 
 				if (inside(outdir, blueprint_dest)) {
-					writeFile(blueprint_dest, dump({
+					await writeFile(blueprint_dest, dump({
 						fields: blueprint_content
 					}));
 				} else {
@@ -410,7 +410,7 @@ if (command === 'generate') {
 				);
 
 				if (inside(outdir, blueprint_dest)) {
-					writeFile(blueprint_dest, dump({
+					await writeFile(blueprint_dest, dump({
 						tabs: {
 							fields: {
 								label: 'Fields',
