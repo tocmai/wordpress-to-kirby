@@ -299,7 +299,7 @@ function serialize_value(key, value, id) {
 			}
 		case 'markdown':
 			try {
-				return getHtmlToMdProcessor(MD_DEFAULTS).processSync(value).toString();
+				return getHtmlToMdProcessor(MD_DEFAULTS).processSync(value.body?.innerHTML ?? value).toString();
 			} catch(err) {
 				process.stderr.write(`Warn: Can’t serialize HTML value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
@@ -307,7 +307,7 @@ function serialize_value(key, value, id) {
 			break;
 		case 'remarkdown':
 			try {
-				return getMdToMdProcessor(MD_DEFAULTS).processSync(value);
+				return getMdToMdProcessor(MD_DEFAULTS).processSync(value).toString();
 			} catch(err) {
 				process.stderr.write(`Warn: Can’t serialize Markdown value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
@@ -315,7 +315,7 @@ function serialize_value(key, value, id) {
 			break;
 		case 'markup':
 			try {
-				return getMdToHtmlProcessor().processSync(value);
+				return getMdToHtmlProcessor().processSync(value).toString();
 			} catch(err) {
 				process.stderr.write(`Warn: Can’t serialize Markdown value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
@@ -323,7 +323,7 @@ function serialize_value(key, value, id) {
 			break;
 		case 'demarkdown':
 			try {
-				return getMdToTextProcessor().processSync(value);
+				return getMdToTextProcessor().processSync(value).toString();
 			} catch(err) {
 				process.stderr.write(`Warn: Can’t serialize Markdown value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
@@ -331,7 +331,7 @@ function serialize_value(key, value, id) {
 			break;
 		case 'demarkup':
 			try {
-				return getHtmlToTextProcessor().processSync(value);
+				return getHtmlToTextProcessor().processSync(value.body?.innerHTML ?? value).toString();
 			} catch(err) {
 				process.stderr.write(`Warn: Can’t serialize HTML value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
@@ -339,7 +339,7 @@ function serialize_value(key, value, id) {
 			break;
 		case 'remarkup':
 			try {
-				return getHtmlToHtmlProcessor().processSync(value);
+				return getHtmlToHtmlProcessor().processSync(value.body?.innerHTML ?? value).toString();
 			} catch(err) {
 				process.stderr.write(`Warn: Can’t serialize HTML value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
