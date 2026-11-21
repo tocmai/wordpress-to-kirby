@@ -9,6 +9,7 @@ import { serialize, unserialize } from 'php-serialize';
 
 import { serialize as serialize_item } from './src/kirby-txt.js';
 import { uuid } from './src/uuid.js';
+import inside from './src/inside.js';
 
 async function getPackage() {
 	return JSON.parse(
@@ -352,8 +353,12 @@ if (command === 'generate') {
 
 		for (let item of processed_items) {
 			const destination = outpath(item);
-			await mkdir(dirname(destination), { recursive: true });
-			await writeFile(destination, serialize_item(item));
+			if (inside(outdir, destination)) {
+				await mkdir(dirname(destination), { recursive: true });
+				await writeFile(destination, serialize_item(item));
+			} else {
+				console.error(`Path not inside output directory, skipping: ${destination}`);
+			}
 		};
 
 		const blueprints_path = join(outdir, 'site', 'blueprints');
@@ -376,9 +381,13 @@ if (command === 'generate') {
 					key + '.yml'
 				);
 
-				writeFile(blueprint_dest, dump({
-					fields: blueprint_content
-				}));
+				if (inside(outdir, blueprint_dest)) {
+					writeFile(blueprint_dest, dump({
+						fields: blueprint_content
+					}));
+				} else {
+					console.error(`Path not inside output directory, skipping: ${blueprint_dest}`);
+				}
 
 			} else {
 				const blueprint_dest = join(
@@ -387,35 +396,39 @@ if (command === 'generate') {
 					key + '.yml'
 				);
 
-				writeFile(blueprint_dest, dump({
-					tabs: {
-						fields: {
-							label: 'Fields',
-							sections: {
-								fields: {
-									type: 'fields',
-									fields: blueprint_content
-								}		
-							}
-						},
-						pages: {
-							label: 'Pages',
-							sections: {
-								pages: {
-									type: 'pages'
+				if (inside(outdir, blueprint_dest)) {
+					writeFile(blueprint_dest, dump({
+						tabs: {
+							fields: {
+								label: 'Fields',
+								sections: {
+									fields: {
+										type: 'fields',
+										fields: blueprint_content
+									}		
 								}
-							}
-						},
-						files: {
-							label: 'Files',
-							sections: {
-								files: {
-									type: 'files'
+							},
+							pages: {
+								label: 'Pages',
+								sections: {
+									pages: {
+										type: 'pages'
+									}
+								}
+							},
+							files: {
+								label: 'Files',
+								sections: {
+									files: {
+										type: 'files'
+									}
 								}
 							}
 						}
-					}
-				}));
+					}));
+				} else {
+					console.error(`Path not inside output directory, skipping: ${blueprint_dest}`);
+				}
 			}
 		});
 
@@ -471,11 +484,15 @@ if (command === 'download') {
 					console.log(`Already fetched, skipping: ${url}`);
 				} else {
 					console.log(`Fetching: ${url}`);
-					await mkdir(dirname(dest), { recursive: true });
-					await writeFile(
-						dest,
-						(await fetch(url)).body
-					);
+					if (inside(outdir, dest)) {
+						await mkdir(dirname(dest), { recursive: true });
+						await writeFile(
+							dest,
+							(await fetch(url)).body
+						);
+					} else {
+						console.error(`Path not inside output directory, skipping: ${dest}`);
+					}
 					console.log(`Fetched: ${url}`);
 					fetched.add(url);
 				}
@@ -485,11 +502,15 @@ if (command === 'download') {
 				console.log(`Already fetched, skipping: ${attachment.attachment_url}`);
 			} else {
 				console.log(`Fetching: ${attachment.attachment_url}`);
-				await mkdir(dirname(dest), { recursive: true });
-				await writeFile(
-					dest,
-					(await fetch(attachment.attachment_url)).body
-				);
+				if (inside(outdir, dest)) {
+					await mkdir(dirname(dest), { recursive: true });
+					await writeFile(
+						dest,
+						(await fetch(attachment.attachment_url)).body
+					);
+				} else {
+					console.error(`Path not inside output directory, skipping: ${dest}`);
+				}
 				console.log(`Fetched: ${attachment.attachment_url}`);
 				fetched.add(attachment.attachment_url);
 			}
