@@ -26,19 +26,23 @@ Use `wordpress-to-kirby --help` for information on usage and available commands 
 
 ### `wordpress-to-kirby generate`
 
-Generate a Kirby CMS file structure from the provided XML file. Usage:
+Generate a Kirby CMS file structure from the input file. Usage:
 
 ```bash
-wordpress-to-kirby generate [options] <wordpress-xml-file>
+wordpress-to-kirby generate [options] <input-file>
 ```
+
+The input must correspond to a WordPress export XML file. When `-` is provided, the content is read from STDIN.
 
 ### `wordpress-to-kirby download`
 
-Download the attachments found in the provided XML file. Usage: 
+Download the attachments found in the input file. Usage: 
 
 ```bash
-wordpress-to-kirby download [options] <wordpress-xml-file>
+wordpress-to-kirby download [options] <input-file>
 ```
+
+The input must correspond to either a WordPress export XML file or a metadata JSON file (generated with the `generate` command). When `-` is provided, the content is read from STDIN.
 
 ## Options
 
@@ -65,6 +69,8 @@ Root directory to which to write the output, relative to the current working dir
 ```bash
 wordpress-to-kirby generate my-blog.xml -o my-blog 
 ```
+
+When using the `--only-metadata` option is provided, the `--outdir` value can be `-`, which will cause the `metadata.json` file to be output to STDOUT.
 
 ### `--contentdir=<path>`
 

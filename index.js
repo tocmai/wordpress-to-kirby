@@ -10,6 +10,7 @@ import { serialize, unserialize } from 'php-serialize';
 import { serialize as serialize_item } from './src/kirby-txt.js';
 import { uuid } from './src/uuid.js';
 import inside from './src/inside.js';
+import slurp from './src/slurp.js';
 
 async function getPackage() {
 	return JSON.parse(
@@ -73,19 +74,24 @@ if (options.help) {
 
 if (options.version) {
 	const pkg = await getPackage();
-	console.log(pkg.version);
+	process.stdout.write(pkg.version + '\n');
 	process.exit();
 }
 
 const [command, ...files ] = operands;
 
 if (command !== 'generate' && command !== 'download') {
-	console.error(`Supported commands: generate, download; ${command} provided. Exiting.`);
+	process.stderr.write(`Supported commands: generate, download; ${command} provided. Exiting.\n`);
 	process.exit(1);
 }
 
 if (files.length !== 1) {
-	console.error(`Exactly one file is supported, ${files.length} provided. Exiting.`);
+	process.stderr.write(`Exactly one file is supported, ${files.length} provided. Exiting.\n`);
+	process.exit(1);
+}
+
+if (options.outdir === '-' && !options['only-metadata']) {
+	process.stderr.write('Outputting to STDOUT is only supported with the --only-metadata option. Exiting.\n');
 	process.exit(1);
 }
 
@@ -163,21 +169,21 @@ function parse_value(key, value, id) {
 			try {
 				return unserialize(value);
 			} catch(err) {
-				console.error(`Warn: Can’t parse PHP value in post ${id}, skipping: ${abbr(value)}`);
+				process.stderr.write(`Warn: Can’t parse PHP value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
 			}
 		case 'yaml':
 			try {
 				return load(value);
 			} catch (err) {
-				console.error(`Warn: Can’t parse YAML value in post ${id}, skipping: ${abbr(value)}`);
+				process.stderr.write(`Warn: Can’t parse YAML value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
 			}
 		case 'json':
 			try {
 				return JSON.parse(value);
 			} catch(err) {
-				console.error(`Warn: Can’t parse JSON value in post ${id}, skipping: ${abbr(value)}`);
+				process.stderr.write(`Warn: Can’t parse JSON value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
 			}
 		case 'html':
@@ -186,7 +192,7 @@ function parse_value(key, value, id) {
 					`<!doctype html><html><head></head><body>${value}</body></html>`
 				).window.document;
 			} catch(err) {
-				console.error(`Warn: Can’t parse HTML value in post ${id}, skipping: ${abbr(value)}`);
+				process.stderr.write(`Warn: Can’t parse HTML value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
 			}
 		default:
@@ -203,52 +209,34 @@ function serialize_value(key, value, id) {
 			try {
 				return serialize(value);
 			} catch(err) {
-				console.error(`Warn: Can’t serialize PHP value in post ${id}, skipping: ${abbr(value)}`);
+				process.stderr.write(`Warn: Can’t serialize PHP value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
 			}
 		case 'yaml':
 			try {
 				return dump(value);
 			} catch (err) {
-				console.error(`Warn: Can’t serialize YAML value in post ${id}, skipping: ${abbr(value)}`);
+				process.stderr.write(`Warn: Can’t serialize YAML value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
 			}
 		case 'json':
 			try {
 				return JSON.stringify(value);
 			} catch(err) {
-				console.error(`Warn: Can’t serialize JSON value in post ${id}, skipping: ${abbr(value)}`);
+				process.stderr.write(`Warn: Can’t serialize JSON value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
 			}
 		case 'html':
 			try {
 				return value.body.innerHTML;
 			} catch(err) {
-				console.error(`Warn: Can’t serialize HTML value in post ${id}, skipping: ${abbr(value)}`);
+				process.stderr.write(`Warn: Can’t serialize HTML value in post ${id}, skipping: ${abbr(value)}\n`);
 				return value;
 			}
 		default:
 			return value;
 	}
 }
-
-const document = new JSDOM(
-	await readFile(files[0], 'utf8'),
-	{
-		contentType: 'application/xml'
-	}
-).window.document;
-
-const items = Array.from(document.querySelectorAll('item'))
-	.map(extract)
-	.filter(item => {
-		if (types_to_include.size) {
-			return types_to_include.has(item.post_type);
-		} else if (types_to_exclude.size) {
-			return !types_to_exclude.has(item.post_type);
-		}
-		return true;
-	});
 
 function extract(item) {
 	const select = (sel, ns, all = false, el) => {
@@ -314,8 +302,30 @@ function outpath(item) {
 	return join(outdir, 'content', ...parts, item.post_type + '.txt');
 }
 
+function readFromExportXML(file) {
+	const document = new JSDOM(file, {
+		contentType: 'application/xml'
+	}).window.document;
+
+	return Array.from(document.querySelectorAll('item'))
+		.map(extract)
+		.filter(item => {
+			if (types_to_include.size) {
+				return types_to_include.has(item.post_type);
+			} else if (types_to_exclude.size) {
+				return !types_to_exclude.has(item.post_type);
+			}
+			return true;
+		});
+}
+
 if (command === 'generate') {
 
+	const items = readFromExportXML(
+		files[0] === '-' ? 
+			await slurp(process.stdin) : 
+			await readFile(files[0], 'utf8')
+	);
 	const processed_items = items.map(process_item);
 
 	const metadata = {
@@ -346,8 +356,12 @@ if (command === 'generate') {
 		metadata.types[key] = Array.from(new Set(metadata.types[key])).sort();
 	});
 
-	await mkdir(outdir, { recursive: true });
-	await writeFile(join(outdir, 'metadata.json'), JSON.stringify(metadata, null, '\t'));
+	if (outdir === '-') {
+		process.stdout.write(JSON.stringify(metadata, null, '\t'));
+	} else {
+		await mkdir(outdir, { recursive: true });
+		await writeFile(join(outdir, 'metadata.json'), JSON.stringify(metadata, null, '\t'));
+	}
 
 	if (!options['only-metadata']) {
 
@@ -357,7 +371,7 @@ if (command === 'generate') {
 				await mkdir(dirname(destination), { recursive: true });
 				await writeFile(destination, serialize_item(item));
 			} else {
-				console.error(`Path not inside output directory, skipping: ${destination}`);
+				process.stderr.write(`Path not inside output directory, skipping: ${destination}\n`);
 			}
 		};
 
@@ -386,7 +400,7 @@ if (command === 'generate') {
 						fields: blueprint_content
 					}));
 				} else {
-					console.error(`Path not inside output directory, skipping: ${blueprint_dest}`);
+					process.stderr.write(`Path not inside output directory, skipping: ${blueprint_dest}\n`);
 				}
 
 			} else {
@@ -427,7 +441,7 @@ if (command === 'generate') {
 						}
 					}));
 				} else {
-					console.error(`Path not inside output directory, skipping: ${blueprint_dest}`);
+					process.stderr.write(`Path not inside output directory, skipping: ${blueprint_dest}\n`);
 				}
 			}
 		});
@@ -457,6 +471,13 @@ if (command === 'generate') {
 	}
 }
 
+function readFromMetadataJSON(file) {
+	try {
+		return JSON.parse(file);
+	} catch(err) {}
+	return null;
+}
+
 if (command === 'download') {
 
 	const contentdir = options.contentdir ? 
@@ -465,13 +486,26 @@ if (command === 'download') {
 			options.contentdir
 		) : null;
 
+	const file = files[0] === '-' ? 
+		await slurp(process.stdin) :
+		await readFile(files[0], 'utf8');
+
+	const items = readFromMetadataJSON(file)?.output
+		.filter(item => item.post_type === 'attachment') ?? 
+		readFromExportXML(file)
+			.filter(item => item.post_type === 'attachment')
+			.map(process_item)
+			.map(item => ({
+				url: item.attachment_url,
+				path: relative(outdir, outpath(item))
+			}));
+
 	const fetched = new Set();
 
-	for (let item of items.filter(it => it.post_type === 'attachment')) {
-		const attachment = process_item(item);
-		const dest = outpath(attachment).replace(/\.txt$/, '');
+	for (let item of items) {
+		const dest = join(outdir, item.path.replace(/\.txt$/, ''));
 		if (contentdir) {
-			const pathname = new URL(attachment.attachment_url).pathname
+			const pathname = new URL(item.url).pathname
 				.split('/')
 				.filter(p => p && p !== 'wp-content')
 				.join(sep);
@@ -481,38 +515,42 @@ if (command === 'download') {
 			} else {
 				const url = new URL(pathname, contentdir);
 				if (fetched.has(url)) {
-					console.log(`Already fetched, skipping: ${url}`);
+					process.stderr.write(`Already fetched, skipping: ${url}\n`);
 				} else {
-					console.log(`Fetching: ${url}`);
 					if (inside(outdir, dest)) {
-						await mkdir(dirname(dest), { recursive: true });
-						await writeFile(
-							dest,
-							(await fetch(url)).body
-						);
+						process.stderr.write(`Fetching: ${url}\n`);
+						const res = await fetch(url);
+						if (res.ok) {
+							await mkdir(dirname(dest), { recursive: true });
+							await writeFile(dest, res.body);
+							process.stderr.write(`Fetched: ${url}\n`);
+						} else {
+							process.stderr.write(`Error fetching: ${url}\n`);
+						}
+						fetched.add(url);
 					} else {
-						console.error(`Path not inside output directory, skipping: ${dest}`);
+						process.stderr.write(`Path not inside output directory, skipping: ${dest}\n`);
 					}
-					console.log(`Fetched: ${url}`);
-					fetched.add(url);
 				}
 			}
 		} else {
-			if (fetched.has(attachment.attachment_url)) {
-				console.log(`Already fetched, skipping: ${attachment.attachment_url}`);
+			if (fetched.has(item.url)) {
+				process.stderr.write(`Already fetched, skipping: ${item.url}\n`);
 			} else {
-				console.log(`Fetching: ${attachment.attachment_url}`);
 				if (inside(outdir, dest)) {
-					await mkdir(dirname(dest), { recursive: true });
-					await writeFile(
-						dest,
-						(await fetch(attachment.attachment_url)).body
-					);
+					process.stderr.write(`Fetching: ${item.url}\n`);
+					const res = await fetch(item.url);
+					if (res.ok) {
+						await mkdir(dirname(dest), { recursive: true });
+						await writeFile(dest, res.body);
+						process.stderr.write(`Fetched: ${item.url}\n`);
+					} else {
+						process.stderr.write(`Error fetching: ${item.url}\n`);
+					}
+					fetched.add(item.url);
 				} else {
-					console.error(`Path not inside output directory, skipping: ${dest}`);
+					process.stderr.write(`Path not inside output directory, skipping: ${dest}\n`);
 				}
-				console.log(`Fetched: ${attachment.attachment_url}`);
-				fetched.add(attachment.attachment_url);
 			}
 		}
 		
@@ -520,7 +558,7 @@ if (command === 'download') {
 }
 
 function printHelp() {
-	console.log(`wordpress-to-kirby: 
+	process.stdout.write(`wordpress-to-kirby: 
 
 	transform a WordPress XML export into a directory of Kirby CMS files.
 
