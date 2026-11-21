@@ -176,6 +176,10 @@ Fields from `<wp:postmeta>` are included in the output with the `postmeta*` pref
 * `uuid: <string>`, containing 16 random alphanumeric characters.
 * `template: 'attachment'` is added to attachments.
 
+## Related tools
+
+Once you have produced a directory of Kirby content files, you can use [`yamatter`](https://github.com/danburzo/yamatter/) with the `--kirby` flag to further modify the fields.
+
 ## Prior art
 
 * [`splorp/wordpress-xml-to-kirby`](https://github.com/splorp/wordpress-xml-to-kirby)
