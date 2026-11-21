@@ -20,7 +20,7 @@ function cap(str = '') {
 export function parse(str = '') {
 	const data = {};
 	str.split(/\n----\s*\n*/).forEach(field => {
-		let [_, key, value] = field.match(/\s*([^:]+?)\s*:([^:]*)/) ?? [];
+		let [_, key, value] = field.match(/\s*([^:]+?)\s*:(.*)/su) ?? [];
 		if (!key) {
 			return;
 		}
